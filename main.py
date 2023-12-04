@@ -9,6 +9,7 @@ def main():
     job_type = sys.argv[1]
 
     if job_type == 'language':
+        print("LOG: Running language job...")
         run_language_cron_job()
     elif job_type == 'location':
         run_language_cron_job()
