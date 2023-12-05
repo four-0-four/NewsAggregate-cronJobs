@@ -1,5 +1,6 @@
 import sys
 from app.jobs.languageJob import run_language_cron_job
+from app.jobs.locationJob import run_location_cron_job
 
 def main():
     if len(sys.argv) != 2:
@@ -12,7 +13,7 @@ def main():
         print("LOG: Running language job...")
         run_language_cron_job()
     elif job_type == 'location':
-        run_language_cron_job()
+        run_location_cron_job()
     else:
         print("Invalid argument. Please use 'language' or 'location'.")
         sys.exit(1)

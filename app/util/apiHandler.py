@@ -22,6 +22,15 @@ class APIDataException(Exception):
         self.message = message
         super().__init__(message)
 
+def fetch_json_from_github(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # This will raise an HTTPError if the HTTP request returned an unsuccessful status code.
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data: {e}")
+        return None
+
 def get_from_api(url):
     # API details
     app_id = os.getenv('PARSE_APPLICATION_ID')

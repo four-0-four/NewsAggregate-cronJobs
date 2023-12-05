@@ -2,7 +2,6 @@ from ..config.database import SessionLocal
 from dotenv import load_dotenv
 from app.util.apiHandler import get_from_api
 from app.models.language import Language
-from app.util.apiHandler import get_from_api
 
 # Load environment variables
 load_dotenv()

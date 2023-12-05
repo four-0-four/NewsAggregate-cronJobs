@@ -1,14 +1,158 @@
-from sqlalchemy.orm import Session
-from ..models.location import Continent, Country, Province, City
+from ..config.database import SessionLocal
+from dotenv import load_dotenv
+from app.util.apiHandler import get_from_api, fetch_json_from_github
+from app.models.location import Continent, Country, Province, City
+import json
+from app.util.apiHandler import APIDataException
 
-def get_continent(db: Session, continent_id: int):
-    return db.query(Continent).filter(Continent.id == continent_id).first()
+# Load environment variables
+load_dotenv()
 
-def get_country(db: Session, country_id: int):
-    return db.query(Country).filter(Country.id == country_id).first()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-def get_province(db: Session, province_id: int):
-    return db.query(Province).filter(Province.id == province_id).first()
+def get_continent_id_given_name(db, continent_name):
+    continent_name = continent_name.lower()
+    continent = db.query(Continent).filter(Continent.name == continent_name).first()
+    return continent.id if continent else None
 
-def get_city(db: Session, city_id: int):
-    return db.query(City).filter(City.id == city_id).first()
+def add_continent(db, continent_data):
+    new_continent = Continent(
+        name=continent_data["name"]
+    )
+    db.add(new_continent)
+    db.commit()
+    return new_continent
+    
+def add_country(db, country_data, continent_id):
+    new_country = Country(
+        name=country_data["name"],
+        code=country_data["iso3"],
+        capital=country_data.get("capital"),
+        phone=country_data.get("phone_code"),
+        native=country_data.get("native"),
+        currency=country_data.get("currency"),
+        continent_id=continent_id,
+    )
+    db.add(new_country)
+    db.commit()
+    return new_country
+
+def add_province(db, province_data, country_id):
+    new_province = Province(
+        name=province_data["name"],
+        code=province_data["state_code"],
+        country_id=country_id,
+    )
+    db.add(new_province)
+    db.commit()
+    return new_province
+
+def add_city(db, city_data, province_id, country_id):
+    new_city = City(
+        name=city_data["name"],
+        province_id=province_id,
+        country_id=country_id,
+    )
+    db.add(new_city)
+    db.commit()
+    return new_city
+
+def get_coutries_provinces_cities():
+    print("LOG: connecting to database...")
+    db_gen = get_db()
+    db = next(db_gen)
+
+    try:
+        print("LOG: fetching geographical data from API...")
+        url = "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/countries%2Bstates%2Bcities.json"
+        data = fetch_json_from_github(url)
+
+        for country_data in data:
+            print(f"LOG: Processing country {country_data['name']}...")
+            continent_id = get_continent_id_given_name(db, country_data["region"])
+            if not continent_id:
+                raise Exception(f"ERROR: Continent {country_data['region']} not found in database.")
+            
+            db_country = db.query(Country).filter(
+                Country.code == country_data["iso3"], 
+                Country.name == country_data["name"]
+            ).first()
+
+            if db_country is None:
+                print(f"LOG: Adding country {country_data['name']} to database...")
+                db_country = add_country(db, country_data, continent_id)
+                
+            for province_data in country_data.get("states", []):
+                print(f"LOG: Processing province {province_data['name']}...")
+                db_province = db.query(Province).filter(
+                    Province.code == province_data["state_code"], 
+                    Province.name == province_data["name"]
+                ).first()
+
+                if db_province is None:
+                    print(f"LOG: Adding province {province_data['name']} to database...")
+                    db_province = add_province(db, province_data, db_country.id)
+
+                for city_data in province_data.get("cities", []):
+                    print(f"LOG: Processing city {city_data['name']}...")
+                    db_city = db.query(City).filter(
+                        City.name == city_data["name"],
+                        City.country_id == db_country.id
+                    ).first()
+
+                    if db_city is None:
+                        print(f"LOG: Adding city {city_data['name']} to database...")
+                        add_city(db, city_data, db_province.id, db_country.id)
+
+        print("LOG: Data processing completed.")
+
+    except Exception as e:
+        print(f"ERROR: An error occurred: {e}")
+        db.rollback()
+
+    finally:
+        next(db_gen, None)
+        print("LOG: Database session closed.")
+
+def get_continents():
+    print("LOG: connecting to database...")
+    db_gen = get_db()
+    db = next(db_gen)
+
+    try:
+        print("LOG: fetching geographical data from API...")
+        url = "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/regions.json"
+        data = fetch_json_from_github(url)
+        
+        for continent_data in data:
+            print(f"LOG: Processing continent {continent_data['name']}...")
+            db_continent = db.query(Continent).filter(
+                Continent.name == continent_data["name"]
+            ).first()
+
+            if db_continent is None:
+                print(f"LOG: Adding continent {continent_data['name']} to database...")
+                db_continent = add_continent(db, continent_data)
+                
+        
+        print("LOG: Data processing completed.")
+
+    except Exception as e:
+        print(f"ERROR: An error occurred: {e}")
+        db.rollback()
+
+    finally:
+        next(db_gen, None)
+        print("LOG: Database session closed.")
+
+def run_location_cron_job():
+    get_continents()
+    get_coutries_provinces_cities()
+
+if __name__ == "__main__":
+    run_location_cron_job()
