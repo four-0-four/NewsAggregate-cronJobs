@@ -128,7 +128,7 @@ class NewsInput(BaseModel):
     content: str
     publishedDate: datetime
     language_id: int
-    isInternal: bool = True
+    isInternal: bool = False
     isPublished: bool = False
     writer_id: Optional[str]  # ID of the writer
     keywords: List[str]  # List of keyword IDs
