@@ -5,8 +5,8 @@ from app.jobs.newsJob import run_news_cron_job
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python script.py [language|location]")
+    if len(sys.argv) < 2:
+        print("Usage: python script.py [language|location|news]")
         sys.exit(1)
 
     job_type = sys.argv[1]
@@ -18,8 +18,14 @@ def main():
         print("LOG: Running location job...")
         run_location_cron_job()
     elif job_type == 'news':
+        if len(sys.argv) != 3:
+            print("Usage: python script.py news [news_corporation]")
+            sys.exit(1)
+
+        news_corporation = sys.argv[2]
+
         print("LOG: Running news job...")
-        run_news_cron_job()
+        run_news_cron_job(news_corporation)
     else:
         print("Invalid argument. Please use 'language' or 'location'.")
         sys.exit(1)

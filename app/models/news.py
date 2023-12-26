@@ -132,7 +132,8 @@ class NewsInput(BaseModel):
     isPublished: bool = False
     writer_id: Optional[str]  # ID of the writer
     keywords: List[str]  # List of keyword IDs
-    category_id: int
+    categories: List[str]
+    media_url: Optional[str]
 
     class Config:
         from_attributes = True
