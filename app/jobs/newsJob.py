@@ -2,13 +2,15 @@ import requests
 import json
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+
+from app.models.common import NewsCorporations
 from app.models.news import NewsInput
+from app.services.newsService import add_news
 from ..config.database import SessionLocal
 from dotenv import load_dotenv
 import os
 from app.services.authService import authenticate_user
 from eventregistry import EventRegistry, QueryArticlesIter, ReturnInfo, ArticleInfoFlags, SourceInfoFlags
-from gensim.summarization import summarize
 
 # Load environment variables
 load_dotenv()
@@ -40,7 +42,7 @@ def authenticate():
 
 
 def fetch_news_for_corporation(corporation, token):
-    print(f"LOG: Fetching news for {corporation}...")
+    print(f"        LOG: Fetching news for {corporation}...")
     # Assuming make_news_api_call takes category name and corporation shortName
     er = EventRegistry(apiKey='2084a034-acf9-46be-8c5f-26851ff83d3f')
     sourceUri = er.getSourceUri(corporation)
@@ -64,7 +66,7 @@ def fetch_news_for_corporation(corporation, token):
         news_list.append(article)
 
     if not news_list:
-        print(f"LOG: No news found for {corporation}")
+        print(f"WARNING:        No news found for {corporation}")
         return None
 
     return news_list
@@ -82,7 +84,7 @@ def get_keywords(news_item):
 
 
 def process_news_item(db, news_item, token):
-    print(f"LOG: Processing news {news_item.get('title', '')}...")
+    print(f"        LOG: Processing news {news_item.get('title', '')}...")
 
     # Convert dateTimePub to MySQL datetime format
     pub_date_str = news_item.get('dateTimePub', '')
@@ -98,8 +100,8 @@ def process_news_item(db, news_item, token):
     body = news_item.get('body', '')
 
     # Summarize the body for description
-    description = summarize(body, word_count=50) if body else ''
-
+    description = body[:50] + '...' if body else ''
+    print(news_item.get('image', ''))
     # Assuming default values for language_id, isInternal, isPublished, writer_id, and category_id
     news_data = NewsInput(
         title=news_item.get('title', ''),
@@ -110,36 +112,34 @@ def process_news_item(db, news_item, token):
         isInternal=False,
         isPublished=False,
         keywords=keywords,
-        media_url=news_item.get('image', ''),
+        media_urls=[news_item.get('image', '')],
         categories=categories,
+        writer_id=None
     )
 
     return news_data
 
 
-def run_news_cron_job(news_corporation):
+def run_news_cron_job():
     db: Session = next(get_db())
     token = authenticate()
     if not token:
         return
 
-    #check if news corporation is in the database
-    '''
-    existing_corporation = db.query(NewsCorporations).filter(NewsCorporations.shortName == news_corporation).first()
-    if not existing_corporation:
-        print(f"LOG: News corporation {news_corporation} not found in database")
-        return
-    '''
+    # Retrieve all news corporations from the database
+    all_corporations = db.query(NewsCorporations).all()
 
-    news_list = fetch_news_for_corporation(news_corporation, token)
-    if not news_list:
-        return
+    for corporation in all_corporations:
+        print(f"LOG: Processing news for {corporation.name}...")
+        news_corporation = corporation.name
+        news_list = fetch_news_for_corporation(news_corporation, token)
+        if not news_list:
+            continue
 
-
-    for news_item in news_list:
-        news_data = process_news_item(db, news_item, token)
-        if news_data:
-            add_news(news_data, db)
+        for news_item in news_list:
+            news_data = process_news_item(db, news_item, token)
+            if news_data:
+                add_news(news_data, db)
 
 
 

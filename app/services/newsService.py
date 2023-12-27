@@ -1,5 +1,6 @@
 import requests
 from app.models.common import Category, NewsCorporations
+from app.models.news import NewsInput
 
 BASE_URL = "http://138.197.63.3"
 KEYWORDS_ENDPOINT = "/news/acquireKeywords"
@@ -15,18 +16,25 @@ def acquire_keywords(description, token):
         response.raise_for_status()
         return response.json().get('keywords')
     except requests.RequestException as e:
-        raise Exception(f"Error acquiring keywords - get: {e}")
+        raise Exception(f"        Error acquiring keywords - get: {e}")
 
 
-def add_news(news_data, token):
+def add_news(news_data: NewsInput, token):
     headers = {'Authorization': f'Bearer {token}'}
 
     try:
-        response = requests.post(BASE_URL + ADD_NEWS_ENDPOINT, json=news_data, headers=headers)
+        # Convert the news_data object to a dictionary
+        news_data_dict = news_data.dict()
+
+        # Convert datetime objects to string in ISO format
+        if news_data_dict.get('publishedDate'):
+            news_data_dict['publishedDate'] = news_data_dict['publishedDate'].isoformat()
+
+        response = requests.post(BASE_URL + ADD_NEWS_ENDPOINT, json=news_data_dict, headers=headers)
         response.raise_for_status()
-        print("News successfully added")
+        print("        News successfully added")
     except requests.RequestException as e:
-        raise Exception(f"Error adding news: {e}")
+        raise Exception(f"        Error adding news: {e}")
 
 
 def fetch_categories(db):
