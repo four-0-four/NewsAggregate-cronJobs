@@ -111,6 +111,10 @@ def process_news_item(db, news_item, token):
     # Summarize the body for description
     description = body[:50] + '...' if body else ''
 
+    news_image = news_item.get('image', '')
+    if not news_image:
+        return False
+
     # Assuming default values for language_id, isInternal, isPublished, writer_id, and category_id
     news_data = NewsInput(
         title=news_item.get('title', ''),
@@ -121,7 +125,7 @@ def process_news_item(db, news_item, token):
         isInternal=False,
         isPublished=False,
         keywords=keywords,
-        media_urls=[news_item.get('image', '')],
+        media_urls=[news_image],
         categories=categories,
         writer_id=None
     )
@@ -146,11 +150,20 @@ def run_news_cron_job():
             continue
 
         number_of_news_added = 0
+        number_of_news_to_authenticate = 0
         for news_item in news_list:
+            if number_of_news_to_authenticate >= 100:
+                token = authenticate()
+                if not token:
+                    return
+                number_of_news_to_authenticate = 0
+
             news_data = process_news_item(db, news_item, token)
             if news_data:
                 response = add_news(news_data, token)
                 number_of_news_added += response == 200
+
+            number_of_news_to_authenticate += 1
         print(f"        LOG: {number_of_news_added} news for {corporation} to the database...")
 
 
