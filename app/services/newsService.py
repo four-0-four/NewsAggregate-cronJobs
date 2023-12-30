@@ -2,21 +2,8 @@ import requests
 from app.models.common import Category, NewsCorporations
 from app.models.news import NewsInput
 
-BASE_URL = "http://138.197.63.3"
-KEYWORDS_ENDPOINT = "/news/acquireKeywords"
+BASE_URL = "https://api.farabix.com/mainframe2"
 ADD_NEWS_ENDPOINT = "/news/add"
-
-
-def acquire_keywords(description, token):
-    headers = {'Authorization': f'Bearer {token}'}
-    data = {"description": description}
-
-    try:
-        response = requests.get(BASE_URL + KEYWORDS_ENDPOINT, json=data, headers=headers)
-        response.raise_for_status()
-        return response.json().get('keywords')
-    except requests.RequestException as e:
-        raise Exception(f"        Error acquiring keywords - get: {e}")
 
 
 def add_news(news_data: NewsInput, token):
@@ -31,10 +18,15 @@ def add_news(news_data: NewsInput, token):
             news_data_dict['publishedDate'] = news_data_dict['publishedDate'].isoformat()
 
         response = requests.post(BASE_URL + ADD_NEWS_ENDPOINT, json=news_data_dict, headers=headers)
-        response.raise_for_status()
-        print("        News successfully added")
+
+        # Check if the response was successful
+        if response.status_code != 200:
+            print(f"        WARNING: Failed to add news {news_data.title}. Status code: {response.status_code}")
+            return None
+        return response.json()
     except requests.RequestException as e:
-        raise Exception(f"        Error adding news: {e}")
+        print(f"Error during request: {e}")
+        return None
 
 
 def fetch_categories(db):

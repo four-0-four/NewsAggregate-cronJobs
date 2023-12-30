@@ -42,7 +42,6 @@ def authenticate():
 
 
 def fetch_news_for_corporation(corporation, token):
-    print(f"        LOG: Fetching news for {corporation}...")
     # Assuming make_news_api_call takes category name and corporation shortName
     er = EventRegistry(apiKey='2084a034-acf9-46be-8c5f-26851ff83d3f')
     sourceUri = er.getSourceUri(corporation)
@@ -66,15 +65,27 @@ def fetch_news_for_corporation(corporation, token):
         news_list.append(article)
 
     if not news_list:
-        print(f"WARNING:        No news found for {corporation}")
+        print(f"        WARNING: No news found for {corporation}...")
         return None
-
+    else:
+        print(f"        LOG: Fetched {len(news_list)} news for {corporation}...")
     return news_list
 
 
 def get_categories(news_item):
     categories = news_item.get('categories', [])
-    extracted_categories = [cat['uri'].split('/')[1] for cat in categories if '/' in cat['uri']]
+    extracted_categories = []
+
+    for cat in categories:
+        # Check if the URI contains '/'
+        if '/' in cat['uri']:
+            # Split the URI into parts
+            parts = cat['uri'].split('/')
+            # Remove the first part and reassemble the rest
+            cleaned_uri = '/'.join(parts[1:])
+            # Add to the extracted categories
+            extracted_categories.append(cleaned_uri)
+
     return extracted_categories
 
 def get_keywords(news_item):
@@ -84,8 +95,6 @@ def get_keywords(news_item):
 
 
 def process_news_item(db, news_item, token):
-    print(f"        LOG: Processing news {news_item.get('title', '')}...")
-
     # Convert dateTimePub to MySQL datetime format
     pub_date_str = news_item.get('dateTimePub', '')
     pub_date = datetime.strptime(pub_date_str, '%Y-%m-%dT%H:%M:%SZ') if pub_date_str else datetime.now()
@@ -101,7 +110,7 @@ def process_news_item(db, news_item, token):
 
     # Summarize the body for description
     description = body[:50] + '...' if body else ''
-    print(news_item.get('image', ''))
+
     # Assuming default values for language_id, isInternal, isPublished, writer_id, and category_id
     news_data = NewsInput(
         title=news_item.get('title', ''),
@@ -136,10 +145,13 @@ def run_news_cron_job():
         if not news_list:
             continue
 
+        number_of_news_added = 0
         for news_item in news_list:
             news_data = process_news_item(db, news_item, token)
             if news_data:
-                add_news(news_data, db)
+                response = add_news(news_data, token)
+                number_of_news_added += response == 200
+        print(f"        LOG: {number_of_news_added} news for {corporation} to the database...")
 
 
 
