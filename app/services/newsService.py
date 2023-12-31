@@ -2,7 +2,8 @@ import requests
 from app.models.common import Category, NewsCorporations
 from app.models.news import NewsInput
 
-BASE_URL = "https://api.farabix.com/mainframe2"
+#BASE_URL = "https://api.farabix.com/mainframe2"
+BASE_URL = "http://127.0.0.1:8080"
 ADD_NEWS_ENDPOINT = "/news/add"
 
 
