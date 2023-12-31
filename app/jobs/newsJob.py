@@ -88,6 +88,7 @@ def get_categories(news_item):
 
     return extracted_categories
 
+
 def get_keywords(news_item):
     concepts = news_item.get('concepts', [])
     keywords = [concept['label']['eng'] for concept in concepts if 'label' in concept and 'eng' in concept['label']]
@@ -133,38 +134,55 @@ def process_news_item(db, news_item, token):
     return news_data
 
 
-def run_news_cron_job():
+def get_news_for_corporation_and_save(news_corporation):
     db: Session = next(get_db())
     token = authenticate()
     if not token:
         return
 
+    print(f"LOG: Processing news for {news_corporation}...")
+    news_list = fetch_news_for_corporation(news_corporation, token)
+    if not news_list:
+        return
+
+    number_of_news_added = 0
+    number_of_news_to_authenticate = 0
+    for news_item in news_list:
+        if number_of_news_to_authenticate >= 100:
+            token = authenticate()
+            if not token:
+                return
+            number_of_news_to_authenticate = 0
+
+        news_data = process_news_item(db, news_item, token)
+        if news_data:
+            response = add_news(news_data, token)
+            if response:
+                number_of_news_added += 1 if "message" in response and response['message'] == 'News added successfully.' else 0
+
+        number_of_news_to_authenticate += 1
+    print(f"        LOG: {number_of_news_added} news for {news_corporation} to the database...")
+
+
+def run_getNews_for_one_corporation(corporationName):
+    db: Session = next(get_db())
+    er = EventRegistry(apiKey='2084a034-acf9-46be-8c5f-26851ff83d3f')
+    sourceUri = er.getSourceUri(corporationName)
+    corporation = db.query(NewsCorporations).filter(NewsCorporations.url == "https://www." + sourceUri).first()
+    if not corporation:
+        print(f"WARNING: News corporation {corporationName} not found in the database...")
+        return
+    get_news_for_corporation_and_save(corporation.name)
+
+
+def run_news_cron_job():
+    db: Session = next(get_db())
     # Retrieve all news corporations from the database
     all_corporations = db.query(NewsCorporations).all()
 
     for corporation in all_corporations:
-        print(f"LOG: Processing news for {corporation.name}...")
         news_corporation = corporation.name
-        news_list = fetch_news_for_corporation(news_corporation, token)
-        if not news_list:
-            continue
-
-        number_of_news_added = 0
-        number_of_news_to_authenticate = 0
-        for news_item in news_list:
-            if number_of_news_to_authenticate >= 100:
-                token = authenticate()
-                if not token:
-                    return
-                number_of_news_to_authenticate = 0
-
-            news_data = process_news_item(db, news_item, token)
-            if news_data:
-                response = add_news(news_data, token)
-                number_of_news_added += response == 200
-
-            number_of_news_to_authenticate += 1
-        print(f"        LOG: {number_of_news_added} news for {corporation} to the database...")
+        get_news_for_corporation_and_save(news_corporation)
 
 
 

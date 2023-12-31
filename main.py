@@ -1,7 +1,7 @@
 import sys
 from app.jobs.languageJob import run_language_cron_job
 from app.jobs.locationJob import run_location_cron_job
-from app.jobs.newsJob import run_news_cron_job
+from app.jobs.newsJob import run_news_cron_job, run_getNews_for_one_corporation
 
 
 def main():
@@ -20,6 +20,14 @@ def main():
     elif job_type == 'news':
         print("LOG: Running news job...")
         run_news_cron_job()
+    elif job_type == 'getNews':
+        print("LOG: getting news job for specific organization...")
+        if len(sys.argv) < 2:
+            print("Usage: python script.py getNews [organizationName]")
+            sys.exit(1)
+
+        organization_name = sys.argv[2]
+        run_getNews_for_one_corporation(organization_name)
     else:
         print("Invalid argument. Please use 'language' or 'location'.")
         sys.exit(1)
