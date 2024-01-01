@@ -2,6 +2,7 @@ import sys
 from app.jobs.languageJob import run_language_cron_job
 from app.jobs.locationJob import run_location_cron_job
 from app.jobs.newsJob import run_news_cron_job, run_getNews_for_one_corporation
+from app.jobs.videoJob import run_video_cron_job
 
 
 def main():
@@ -28,6 +29,9 @@ def main():
 
         organization_name = sys.argv[2]
         run_getNews_for_one_corporation(organization_name)
+    elif job_type == 'createVideo':
+        print("LOG: Running creating social media video job...")
+        run_video_cron_job()
     else:
         print("Invalid argument. Please use 'language' or 'location'.")
         sys.exit(1)
