@@ -62,10 +62,10 @@ def run_video_cron_job():
         return
 
     image_paths = []
-    '''
+    
     for i in range(len(news_list)):
         news = news_list[i]
-        print(f"        LOG: Processing news {news["title"]}...")
+        print(f"        LOG: Processing news {news['title']}...")
         processor = NewsMediaProcessor(news["url"], news["title"], f"media/image/news{i}.jpg")
         processed_image_path = processor.process_image()
         image_paths.append(processed_image_path)
@@ -74,7 +74,7 @@ def run_video_cron_job():
     print(f"LOG: Creating video with music...")
     random_number = random.randint(1, 15)
     create_video_with_music(image_paths, 'media/output_video.mp4', f"media/music/music{random_number}.mp3")
-    '''
+    
 
 
 
