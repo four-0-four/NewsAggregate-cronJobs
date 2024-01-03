@@ -41,9 +41,9 @@ def authenticate():
     return token
 
 
-def fetch_news_for_corporation(corporation, token):
+def fetch_news_for_corporation(corporation):
     # Assuming make_news_api_call takes category name and corporation shortName
-    er = EventRegistry(apiKey=token)
+    er = EventRegistry(apiKey='2084a034-acf9-46be-8c5f-26851ff83d3f')
     sourceUri = er.getSourceUri(corporation)
     news_list = []
 
@@ -141,7 +141,7 @@ def get_news_for_corporation_and_save(news_corporation):
         return
 
     print(f"LOG: Processing news for {news_corporation}...")
-    news_list = fetch_news_for_corporation(news_corporation, token)
+    news_list = fetch_news_for_corporation(news_corporation)
     if not news_list:
         return
 
