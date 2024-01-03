@@ -43,19 +43,19 @@ def authenticate():
 
 def fetch_news_for_corporation(corporation, token):
     # Assuming make_news_api_call takes category name and corporation shortName
-    er = EventRegistry(apiKey='2084a034-acf9-46be-8c5f-26851ff83d3f')
+    er = EventRegistry(apiKey=token)
     sourceUri = er.getSourceUri(corporation)
     news_list = []
 
-    # Get today's date and yesterday's date
-    today = datetime.now()
-    yesterday = today - timedelta(days=1)
+    # Get the current time and 12 hours ago
+    current_time = datetime.now()
+    twelve_hours_ago = current_time - timedelta(hours=12)
 
     q = QueryArticlesIter(
         sourceUri=sourceUri,
         lang="eng",
-        dateStart=yesterday,
-        dateEnd=today
+        dateStart=twelve_hours_ago,
+        dateEnd=current_time
     )
 
     for article in q.execQuery(er, sortBy="date", returnInfo=ReturnInfo(
