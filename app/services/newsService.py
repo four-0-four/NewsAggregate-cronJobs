@@ -1,11 +1,14 @@
 import requests
+from dotenv import load_dotenv
+import os
 from app.models.common import Category, NewsCorporations
 from app.models.news import NewsInput
 
-#BASE_URL = "https://api.farabix.com/mainframe2"
-BASE_URL = "http://127.0.0.1:8080"
-ADD_NEWS_ENDPOINT = "/news/add"
+# Load environment variables
+load_dotenv()
 
+BASE_URL = os.getenv("BASE_URL")
+ADD_NEWS_ENDPOINT = os.getenv("ADD_NEWS_ENDPOINT")
 
 def add_news(news_data: NewsInput, token):
     headers = {'Authorization': f'Bearer {token}'}

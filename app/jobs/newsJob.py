@@ -168,6 +168,7 @@ def run_getNews_for_one_corporation(corporationName):
     db: Session = next(get_db())
     er = EventRegistry(apiKey='2084a034-acf9-46be-8c5f-26851ff83d3f')
     sourceUri = er.getSourceUri(corporationName)
+    print(sourceUri)
     corporation = db.query(NewsCorporations).filter(NewsCorporations.url == "https://www." + sourceUri).first()
     if not corporation:
         print(f"WARNING: News corporation {corporationName} not found in the database...")

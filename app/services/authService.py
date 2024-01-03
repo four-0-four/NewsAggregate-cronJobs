@@ -1,9 +1,12 @@
 import requests
+from dotenv import load_dotenv
+import os
 
+# Load environment variables
+load_dotenv()
 
-BASE_URL = "https://api.farabix.com/mainframe2"
-#BASE_URL = "http://127.0.0.1:8080"
-AUTH_ENDPOINT = "/auth/user/login"
+BASE_URL = os.getenv("BASE_URL")
+AUTH_ENDPOINT = os.getenv("AUTH_ENDPOINT")
 
 
 def authenticate_user(username, password):
