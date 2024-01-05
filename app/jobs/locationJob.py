@@ -150,9 +150,111 @@ def get_continents():
         next(db_gen, None)
         print("LOG: Database session closed.")
 
+
+def get_countries():
+    print("LOG: connecting to database...")
+    db_gen = get_db()
+    db = next(db_gen)
+
+    print("LOG: fetching geographical data from API for countries...")
+    url = "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/countries.json"
+    data = fetch_json_from_github(url)
+
+
+    for country_data in data:
+        print(f"LOG: Processing country {country_data['name']}...")
+        continent_id = get_continent_id_given_name(db, country_data["region"])
+        if not continent_id:
+            print(f"ERROR: Continent {country_data['region']} not found in database.")
+            continue
+
+        db_country = db.query(Country).filter(
+            Country.code == country_data["iso3"],
+            Country.name == country_data["name"]
+        ).first()
+
+        if db_country is None:
+            print(f"LOG: Adding country {country_data['name']} to database...")
+            db_country = add_country(db, country_data, continent_id)
+
+    print("LOG: Data processing completed.")
+
+
+def get_provinces():
+    print("LOG: connecting to database...")
+    db_gen = get_db()
+    db = next(db_gen)
+
+    print("LOG: fetching geographical data from API for provinces...")
+    url = "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/states.json"
+    data = fetch_json_from_github(url)
+
+    for province_data in data:
+        print(f"LOG: Processing province {province_data['name']}...")
+        db_province = db.query(Province).filter(
+            Province.code == province_data["state_code"],
+            Province.name == province_data["name"]
+        ).first()
+
+        db_country = db.query(Country).filter(
+            Country.name == province_data["country_name"]
+        ).first()
+
+        if not db_country:
+            print(f"ERROR: Country {province_data["country_name"]} not found in database when attempting to add province.")
+            continue
+
+        if db_province is None:
+            print(f"LOG: Adding province {province_data['name']} to database...")
+            db_province = add_province(db, province_data, db_country.id)
+
+    print("LOG: Data processing completed.")
+
+
+def get_cities():
+    print("LOG: connecting to database...")
+    db_gen = get_db()
+    db = next(db_gen)
+
+    print("LOG: fetching geographical data from API for cities...")
+    url = "https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/master/cities.json"
+    data = fetch_json_from_github(url)
+
+    for city_data in data:
+        print(f"LOG: Processing city {city_data['name']}...")
+        db_country = db.query(Country).filter(
+            Country.name == city_data["country_name"]
+        ).first()
+
+        if not db_country:
+            print(f"ERROR: Country {city_data["country_name"]} not found in database when attempting to add city.")
+            continue
+
+        db_province = db.query(Province).filter(
+            Country.name == city_data["state_name"]
+        ).first()
+
+        if not db_country:
+            print(f"ERROR: province {city_data["state_name"]} not found in database when attempting to add city.")
+            continue
+
+        db_city = db.query(City).filter(
+            City.name == city_data["name"],
+            City.country_id == db_country.id
+        ).first()
+
+        if db_city is None:
+            print(f"LOG: Adding city {city_data['name']} to database...")
+            add_city(db, city_data, db_province.id, db_country.id)
+
+    print("LOG: Data processing completed.")
+
+
 def run_location_cron_job():
     get_continents()
-    get_coutries_provinces_cities()
+    get_countries()
+    get_provinces()
+    get_cities()
 
 if __name__ == "__main__":
     run_location_cron_job()

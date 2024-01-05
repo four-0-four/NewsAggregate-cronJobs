@@ -40,6 +40,7 @@ def create_video_with_music(image_paths, output_video_path, music_path, duration
 
     # Write the result to a file
     final_clip.write_videofile(output_video_path, codec='libx264', audio_codec='aac', fps=fps)
+    return final_clip
 
 class NewsMediaProcessor:
     def __init__(self, image_url, title, local_image_path):
