@@ -6,6 +6,34 @@ import textwrap
 from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
 
 
+
+def create_social_media_description(news_data):
+    category = news_data['category']
+    news_items = news_data['news']
+
+    # Start of the social media post
+    post = f"📰 Here's the top news in {category} in the past 6 hours, and here are the titles: \n\n"
+
+    # Adding each news title
+    for news in news_items[:5]:  # Limit to top 5 news items
+        post += f"🔹 {news['title']}\n"
+
+    # Adding hashtags from keywords
+    post += "\n#️⃣ Hashtags:\n"
+    unique_keywords = set()
+    for news in news_items[:5]:
+        for keyword in news['keywords'][:5]:  # Limit to top 5 keywords
+            unique_keywords.add(keyword.replace(' ', '').replace('&', 'and'))
+
+    post += ' '.join([f'#{keyword}' for keyword in unique_keywords])
+
+    # Save to a text file
+    with open('media/social_media_post.txt', 'w', encoding='utf-8') as file:
+        file.write(post)
+
+    return post
+
+
 def create_video_with_music(image_paths, output_video_path, music_path, duration_per_image=4, fps=24, volume_factor=0.3):
     """
     Creates a video from a list of images with background music.
@@ -35,7 +63,8 @@ def create_video_with_music(image_paths, output_video_path, music_path, duration
     # Load and add the audio
     audio_clip = AudioFileClip(music_path).volumex(volume_factor)
     audio_duration = video_clip.duration
-    audio_clip = audio_clip.set_duration(audio_duration)
+    fade_duration = 5  # Duration of the fadeout in seconds
+    audio_clip = audio_clip.set_duration(audio_duration).audio_fadeout(fade_duration)
     final_clip = video_clip.set_audio(audio_clip)
 
     # Write the result to a file
@@ -68,51 +97,43 @@ class NewsMediaProcessor:
         return image[top:top+new_size, left:left+new_size]
 
     def add_title(self, image):
-        """Add title with black rectangle to the bottom of an image using OpenCV."""
         # Font settings
         font = cv2.FONT_HERSHEY_COMPLEX
+        font_scale = 1.1  # Increased font scale
         font_thickness = 2
-        text_color = (255, 255, 255)  # White color for contrast
-        rectangle_bgr = (0, 0, 0)  # Black color
-        padding = 20  # Padding around text
-        image_width, image_height = image.shape[1], image.shape[0]
+        text_color = (0, 0, 0)  # Black color for text
+        rectangle_bgr = (0, 255, 255)  # Yellow color for rectangle
+        padding = 27  # Increased padding around text
 
-        # Initial font scale
-        font_scale = 0.6  # Start with a smaller font scale
+        # Wrap text to fit within the image width
+        wrapped_text = textwrap.wrap(self.title, width=27)  # Adjust width based on your needs
 
-        # Calculate rectangle size (30% of the image height)
-        rect_height = int(image_height * 0.3)
-        rect_top_y = image_height - rect_height
-
-        # Adjust font scale based on image width
-        max_text_width = image_width - 2 * padding
-        test_string = "W" * 40  # Test string to estimate maximum width
-        while cv2.getTextSize(test_string, font, font_scale, font_thickness)[0][0] > max_text_width:
-            font_scale -= 0.05
-
-        # Increase the final font scale by 20%
-        font_scale *= 1.9
-
-        # Wrap text to fit within the rectangle
-        wrapped_text = textwrap.wrap(self.title, width=30)  # Adjust the width based on your needs
-
-        # Calculate total height of text block
-        text_block_height = sum(
+        # Calculate the total height of the text block
+        total_text_height = sum(
             [cv2.getTextSize(line, font, font_scale, font_thickness)[0][1] + padding for line in wrapped_text])
 
-        # Starting Y-coordinate to center text block in the rectangle
-        y_offset = rect_top_y + (rect_height - text_block_height) // 2
+        # Starting y position to center text block in the middle-lower part of the image
+        y_offset = (image.shape[0] + total_text_height) // 2 - total_text_height + 120
 
-        # Draw rectangle
-        cv2.rectangle(image, (0, rect_top_y), (image_width, image_height), rectangle_bgr, cv2.FILLED)
-
-        # Add each line of text
         for line in wrapped_text:
-            (text_width, text_height), _ = cv2.getTextSize(line, font, font_scale, font_thickness)
-            text_x = (image_width - text_width) // 2
-            if y_offset + text_height <= rect_top_y + rect_height - padding:  # Ensure text does not go beyond rectangle
-                cv2.putText(image, line, (text_x, y_offset + text_height), font, font_scale, text_color, font_thickness)
-                y_offset += text_height + padding
+            # Get text size
+            text_size = cv2.getTextSize(line, font, font_scale, font_thickness)[0]
+
+            # Calculate text and rectangle positions
+            text_x = (image.shape[1] - text_size[0]) // 2
+            text_y = y_offset + text_size[1] + padding // 2
+
+            rectangle_start_point = (text_x - padding, y_offset)
+            rectangle_end_point = (text_x + text_size[0] + padding, y_offset + text_size[1] + padding)
+
+            # Draw rectangle
+            cv2.rectangle(image, rectangle_start_point, rectangle_end_point, rectangle_bgr, -1)
+
+            # Draw text
+            cv2.putText(image, line, (text_x, text_y), font, font_scale, text_color, font_thickness)
+
+            # Update y position for next line
+            y_offset += text_size[1] + padding + 5
 
         return image
 

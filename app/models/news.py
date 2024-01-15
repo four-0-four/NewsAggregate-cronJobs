@@ -130,10 +130,13 @@ class NewsInput(BaseModel):
     language_id: int
     isInternal: bool = False
     isPublished: bool = False
-    writer_id: Optional[str]  # ID of the writer
-    keywords: List[str]  # List of keyword IDs
+    writer_id: Optional[str]
+    keywords: List[str]
+    locations: List[str]
     categories: List[str]
     media_urls: Optional[List[str]]
+    newsCorporationID: int
+    externalLink: str
 
     class Config:
         from_attributes = True

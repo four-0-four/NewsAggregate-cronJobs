@@ -90,12 +90,47 @@ def get_categories(news_item):
 
 
 def get_keywords(news_item):
+    # Extract the list of concepts from the news item. If there are no concepts,
+    # an empty list is used as a default.
     concepts = news_item.get('concepts', [])
-    keywords = [concept['label']['eng'] for concept in concepts if 'label' in concept and 'eng' in concept['label']]
+
+    # Initialize an empty list to hold the extracted keywords.
+    keywords = []
+
+    # Loop through each concept in the concepts list.
+    for concept in concepts:
+        # Check if the concept has a 'label' key and if 'eng' key exists in the 'label'.
+        if concept["score"] >= 3 and 'label' in concept and 'eng' in concept['label']:
+            # Extract the English label and add it to the keywords list.
+            keywords.append(concept['label']['eng'])
+
+    # Return the list of extracted keywords.
     return keywords
 
 
-def process_news_item(db, news_item, token):
+def extract_location_names(news_item):
+    # Extract the list of concepts from the news item. If there are no concepts,
+    # an empty list is used as a default.
+    concepts = news_item.get('concepts', [])
+
+
+    location_names = []
+
+    for concept in concepts:
+        # Check if the concept type is 'loc' and if 'label' key exists with 'eng' subkey
+        if concept.get('type') == 'loc' and 'label' in concept and 'eng' in concept['label']:
+            # Extract the English label
+            loc_label = concept['label']['eng']
+
+            # Split the label by comma and strip whitespace
+            locations = [loc.strip() for loc in loc_label.split(',')]
+
+            # Extend the location_names list with these locations
+            location_names.extend(locations)
+
+    return location_names
+
+def process_news_item(news_item, news_corporation_id):
     # Convert dateTimePub to MySQL datetime format
     pub_date_str = news_item.get('dateTimePub', '')
     pub_date = datetime.strptime(pub_date_str, '%Y-%m-%dT%H:%M:%SZ') if pub_date_str else datetime.now()
@@ -105,6 +140,9 @@ def process_news_item(db, news_item, token):
 
     # get categories
     categories = get_categories(news_item)
+
+    #get location names
+    location_names = extract_location_names(news_item)
 
     # Get the body of the news item
     body = news_item.get('body', '')
@@ -126,15 +164,19 @@ def process_news_item(db, news_item, token):
         isInternal=False,
         isPublished=False,
         keywords=keywords,
+        locations=location_names,
         media_urls=[news_image],
         categories=categories,
-        writer_id=None
+        writer_id=None,
+        newsCorporationID=news_corporation_id,
+        externalLink=news_item.get('url', '')
     )
 
     return news_data
 
 
-def get_news_for_corporation_and_save(news_corporation):
+def \
+        get_news_for_corporation_and_save(news_corporation, news_corporation_id):
     db: Session = next(get_db())
     token = authenticate()
     if not token:
@@ -154,7 +196,7 @@ def get_news_for_corporation_and_save(news_corporation):
                 return
             number_of_news_to_authenticate = 0
 
-        news_data = process_news_item(db, news_item, token)
+        news_data = process_news_item(news_item, news_corporation_id)
         if news_data:
             response = add_news(news_data, token)
             if response:
@@ -173,7 +215,7 @@ def run_getNews_for_one_corporation(corporationName):
     if not corporation:
         print(f"WARNING: News corporation {corporationName} not found in the database...")
         return
-    get_news_for_corporation_and_save(corporation.name)
+    get_news_for_corporation_and_save(corporation.name, corporation.id)
 
 
 def run_news_cron_job():
@@ -183,7 +225,8 @@ def run_news_cron_job():
 
     for corporation in all_corporations:
         news_corporation = corporation.name
-        get_news_for_corporation_and_save(news_corporation)
+        news_corporation_id = corporation.id
+        get_news_for_corporation_and_save(news_corporation, news_corporation_id)
 
 
 
